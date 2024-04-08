@@ -1,8 +1,10 @@
 import time
 import numpy as np
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from NeuralNetwork import NeuralNetwork
 from Dense import Dense
+
 
 class Autoencoder(NeuralNetwork):
 
@@ -44,22 +46,23 @@ class Autoencoder(NeuralNetwork):
             self.decoder[0].output_layer = False
             self.decoder[0].set_act("relu")
             self.decoder[-1].output_layer = True
-            self.decoder[-1].set_sigmoid()
+            self.decoder[-1].set_act("sigmoid")
 
-    def predict(self, X_test, y_test = None, *args, **kwargs):
+    def predict(self, X_test, y_test = None, isimg = True, *args, **kwargs):
         y_hat = self.forward(X_test)
-        self.size_test = y_test.shape[0]
-        if self.decoder[-1].activation == 'linear':
-            min_val = np.min(y_hat, axis = 0)
-            max_val = np.max(y_hat, axis = 0)
-            normalized_data = (y_hat - min_val) / (max_val - min_val)
-            return normalized_data
+
+        # if isimg and self.layers[-1].activation == 'linear':
+        #     scaler = MinMaxScaler()
+        #     y_hat = scaler.fit_transform(y_hat)
 
         if (y_test is not None):
+            self.size_test = y_test.shape[0]
             self.mse_test = self.mean_squared_error(y_test, y_hat)
         return y_hat
 
-    def forward(self, input_data):
+    def forward(self, input_data, isimg = True):
+
+
         prediction = input_data
         for module in self.encoder:
             prediction = module.forward(prediction)
@@ -68,9 +71,16 @@ class Autoencoder(NeuralNetwork):
 
         for module in self.decoder:
             prediction = module.forward(prediction)
+
+        # if self.decoder[-1].activation == 'linear':
+        #     scaler = MinMaxScaler() if isimg else StandardScaler()
+        #     prediction = scaler.fit_transform(prediction)
+        # return normalized_data
+
         return prediction
 
     def backward(self, received_grad):
+        # received_grad = self.scaler.inverse_transform(received_grad)
         error_grad = received_grad
         for module in reversed(self.decoder):
             error_grad = module.backward(error_grad)
@@ -83,7 +93,8 @@ class Autoencoder(NeuralNetwork):
     def fit(self, samples, targets,
             epochs = 100, batch_size = 100,
             shuffle = True,
-            verbose = False):
+            verbose = False,
+            isimg = True):
 
         # Criar um dicionário de estado talvez fosse melhor
         self.batch = batch_size
@@ -97,7 +108,7 @@ class Autoencoder(NeuralNetwork):
             batch_gen = self.minibatch_generator(samples, targets, batch_size, shuffle)
 
             for i, (X_batch, y_batch) in enumerate(batch_gen):
-                y_hat = self.forward(X_batch)
+                y_hat = self.forward(X_batch, isimg)
                 loss += self.mean_squared_error(y_batch, y_hat, prime = False)
 
                 loss_grad = self.mean_squared_error(y_batch, y_hat, prime = True)
@@ -114,9 +125,6 @@ class Autoencoder(NeuralNetwork):
         print(('{:^10}|{:^20}|{:^20}|').format(f'{epoch + 1}/{epochs}',
                                               f'time_elapsed: {self.time_train:.2f}',
                                               f'error={mse:.8f}'))
-
-    def sigmoid_output(self):
-        self.decoder[-1].set_sigmoid()
 
 
     def plot_architecture(self):

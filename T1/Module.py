@@ -72,8 +72,6 @@ class Module():
     ATENÇÃO NO SHAPE ATIVAÇÃO!
     '''
 
-    def set_sigmoid(self):
-        self.activation = 'sigmoid'
 
     def sigmoid(self, inputs, prime = False):
         f = 1 / (1 + np.exp(-inputs))

@@ -3,6 +3,7 @@ import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 class NeuralNetwork:
 
@@ -15,19 +16,18 @@ class NeuralNetwork:
     def __str__(self):
         return f"NeuralNetwork:\nLayer: fazer algo\nLearnable parameters count: {self.params_count}\n\n"
 
-    def predict(self, X_test, y_test = None, *args, **kwargs):
+    def predict(self, X_test, y_test = None, isimg = True, *args, **kwargs):
         y_hat = self.forward(X_test)
-        self.size_test = y_test.shape[0]
-        if self.layers[-1].activation == 'linear':
-            min_val = np.min(y_hat, axis = 0)
-            max_val = np.max(y_hat, axis = 0)
-            normalized_data = (y_hat - min_val) / (max_val - min_val)
-            if (y_test is not None):
-                self.mse_test = self.mean_squared_error(y_test, y_hat)
-            return normalized_data
 
-        if(y_test is not None):
+        if isimg and self.layers[-1].activation == 'linear':
+            scaler = MinMaxScaler()
+            y_hat = scaler.fit_transform(y_hat)
+
+        if (y_test is not None):
+            self.size_test = y_test.shape[0]
             self.mse_test = self.mean_squared_error(y_test, y_hat)
+
+
         return y_hat
 
     def mean_squared_error(self, y_true, y_pred, prime = False):
@@ -52,7 +52,7 @@ class NeuralNetwork:
         if self.lr: module.set_lr(self.lr)
         self.layers.append(module)
 
-    def forward(self, input_data):
+    def forward(self, input_data, isimg = True):
         prediction = input_data
         for module in self.layers:
             prediction = module.forward(prediction)
@@ -67,7 +67,8 @@ class NeuralNetwork:
     def fit(self, samples, targets,
             epochs = 100, batch_size = 100,
             shuffle = True,
-            verbose = False):
+            verbose = False,
+            isimg = True):
 
         # Criar um dicionário de estado talvez fosse melhor
         self.batch = batch_size
@@ -81,7 +82,7 @@ class NeuralNetwork:
             batch_gen = self.minibatch_generator(samples, targets, batch_size, shuffle)
 
             for i, (X_batch, y_batch) in enumerate(batch_gen):
-                y_hat = self.forward(X_batch)
+                y_hat = self.forward(X_batch, isimg)
                 loss += self.mean_squared_error(y_batch, y_hat, prime = False)
 
                 loss_grad = self.mean_squared_error(y_batch, y_hat, prime = True)
